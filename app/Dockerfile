@@ -1,20 +1,28 @@
-# Layer 1: Telling Docker to use the node:17-alpine image as the base image for the container.
-FROM node:17-alpine
+# ---- Base image ----
+FROM node:20-alpine
 
-# Layer 2: Telling Docker to create a directory called `app` in the container and set it as the working directory.
+# Set working directory
 WORKDIR /app
 
-# Layer 3: Copying the package.json file from the root of the project to the `app` directory in the container.
-COPY package.json .
+# Copy only package files first (better layer caching)
+COPY package.json package-lock.json ./
 
-# Layer 4: Installing the dependencies listed in the package.json file.
-RUN npm install
+# Install exact, reproducible dependencies (production only)
+RUN npm ci --omit=dev
 
-# Layer 5: Copying all the files from the root of the project to the `app` directory in the container.
+# Copy the rest of the application source code
 COPY . .
 
-# Layer 6: Telling Docker that the container will listen on port 5000.
+# Create a non-root user and switch to it for security
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
+# Document the port the app listens on
 EXPOSE 5000
 
-# Layer 7: Telling Docker to run the `npm start` command when the container is started.
-CMD [ "npm", "start" ]
+# Basic healthcheck so Docker/K8s can tell if the container is actually healthy
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:5000/', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+
+# Start the server
+CMD [ "node", "server.js" ]
