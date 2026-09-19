@@ -32,6 +32,10 @@ RUN npm ci
 
 # Copy the rest of the source code
 COPY . .
+# Accept the API URL as a build argument (CRA bakes REACT_APP_* vars in at build time)
+ARG REACT_APP_API_URL=http://localhost:5000
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+
 
 # Build the production-optimized static files
 RUN npm run build
