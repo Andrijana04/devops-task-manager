@@ -1,37 +1,35 @@
-# Specify the version of Docker Compose to use.
 version: "3.8"
 
 services:
-  # Define the client service.
   client:
-    # Build the Docker image for the client from the Dockerfile in the ./client directory.
     build: ./client
-    # Set the name of the container to 'clientapp_c'.
     container_name: clientapp_c
-    # Map port 3000 on the host machine to port 3000 on the container.
     ports:
-      - "3000:3000"
-    # Mount the ./client directory on the host machine to the container.
-    # Mount the /node_modules directory to avoid overwriting node_modules inside the container.
-    volumes:
-      - ./client
-      - /node_modules  
-    # Keep the standard input open (useful for debugging or interactive use).
-    stdin_open: true
-    # Allocate a pseudo-TTY (useful for interactive use).
-    tty: true
+      - "3000:80"
+    depends_on:
+      - server
+    restart: unless-stopped
 
-  # Define the server service.
   server:
-    # Build the Docker image for the server from the Dockerfile in the ./app directory.
     build: ./app
-    # Set the name of the container to 'serverapp_c'.
     container_name: serverapp_c
-    # Map port 5000 on the host machine to port 5000 on the container.
     ports:
       - "5000:5000"
-    # Mount the ./app directory on the host machine to the container.
-    # Mount the /node_modules directory to avoid overwriting node_modules inside the container.
+    environment:
+      PORT: 5000
+      MONGODB_URI: mongodb://mongo:27017/taskmanager
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    container_name: mongo_c
+    ports:
+      - "27017:27017"
     volumes:
-      - ./app
-      - /node_modules  
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
